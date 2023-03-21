@@ -34,8 +34,6 @@ struct Bvh {
     /// Extracts the BVH rooted at the given node index.
     inline Bvh extract_bvh(size_t root_id) const;
 
-    Octant get_vec_octant(Vec<Scalar, Node::dimension>& p) const;
-
     template <typename Stack, typename LeafFn>
     void closest_point(Vec<Scalar, Node::dimension>& p, Index, Stack&, LeafFn&& leaf_fn) const;
 
@@ -82,16 +80,6 @@ auto Bvh<Node>::extract_bvh(size_t root_id) const -> Bvh {
         }
     }
     return bvh;
-}
-
-template <typename Node>
-BVH_ALWAYS_INLINE Octant Bvh<Node>::get_vec_octant(Vec<Scalar, Node::dimension> &p) const {
-    static_assert(Node::dimension <= Octant::max_dim);
-    Octant octant;
-    static_for<0, Node::dimension>([&] (size_t i) {
-        octant.value |= std::signbit(p[i]) * (uint32_t{1} << i);
-    });
-    return octant;
 }
 
 template <typename Node>

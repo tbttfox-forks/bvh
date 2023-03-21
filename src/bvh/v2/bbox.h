@@ -42,6 +42,15 @@ struct BBox {
             Vec<T, N>(+std::numeric_limits<T>::max()),
             Vec<T, N>(-std::numeric_limits<T>::max()));
     }
+
+    BVH_ALWAYS_INLINE Vec<T, N> closest_point(const Vec<T, N>& p) const {
+        Vec<T, N> ret;
+        static_for<0, N>([&] (size_t i) {
+            ret[i] = robust_max(robust_max(min[i] - p[i], p[i] - max[i]), 0);
+        });
+        return ret;
+    }
+
 };
 
 } // namespace bvh::v2
