@@ -116,7 +116,7 @@ struct Node {
         return make_intersection_result(ray, tmin, tmax);
     }
 
-    BVH_ALWAYS_INLINE Vec<T, Dim> closest_point(const Vec<T, Dim>& p) const {
+    BVH_ALWAYS_INLINE Vec<T, Dim> closest_point(const Vec<T, Dim>& p, const Octant& octant) const {
         auto mnb = get_min_bounds(octant);
         auto mxb = get_max_bounds(octant);
         Vec<T, Dim> ret;
