@@ -118,8 +118,13 @@ BVH_ALWAYS_INLINE Vec<T, N> safe_inverse(const Vec<T, N>& v) {
 }
 
 template <typename T, size_t N>
+BVH_ALWAYS_INLINE T length_squared(const Vec<T, N>& v) {
+    return dot(v, v);
+}
+
+template <typename T, size_t N>
 BVH_ALWAYS_INLINE T length(const Vec<T, N>& v) {
-    return std::sqrt(dot(v, v));
+    return std::sqrt(length_squared(v);
 }
 
 template <typename T, size_t N>

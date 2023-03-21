@@ -116,6 +116,16 @@ struct Node {
         return make_intersection_result(ray, tmin, tmax);
     }
 
+    BVH_ALWAYS_INLINE Vec<T, Dim> closest_point(const Vec<T, Dim>& p) const {
+        auto mnb = get_min_bounds(octant);
+        auto mxb = get_max_bounds(octant);
+        Vec<T, Dim> ret;
+        static_for<0, Dim>([&] (size_t i) {
+            ret[i] = robust_max(robust_max(mnb[i] - p[i], p[i] - mxb[i]), 0);
+        });
+        return ret;
+    }
+
     BVH_ALWAYS_INLINE void serialize(OutputStream& stream) const {
         for (auto&& bound : bounds)
             stream.write(bound);
