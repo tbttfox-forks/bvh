@@ -8,15 +8,18 @@
 #include <bvh/v2/executor.h>
 #include <bvh/v2/stack.h>
 #include <bvh/v2/tri.h>
+#include <bvh/v2/dist_point_triangle.h>
 
 #include "load_obj.h"
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <tuple>
 
 using Scalar  = float;
+using Index   = size_t;
 using Vec3    = bvh::v2::Vec<Scalar, 3>;
 using BBox    = bvh::v2::BBox<Scalar, 3>;
 using Tri     = bvh::v2::Tri<Scalar, 3>;
@@ -25,26 +28,25 @@ using Bvh     = bvh::v2::Bvh<Node>;
 using Ray     = bvh::v2::Ray<Scalar, 3>;
 
 
-template <typename T>
 auto read_queries(const std::string& path){
-    std::ifstream is(file);
+    std::ifstream is(path);
     static constexpr size_t max_line = 1024;
     char line[max_line];
+    char* ptr = &(line[0]);
 
-    std::vector<Vec<T, 3>> queries, results;
+    std::vector<Vec3> queries, results;
     while (is.getline(ptr, max_line)) {
         if (*ptr == '\0' || *ptr == '#')
             continue;
-        remove_eol(ptr);
         auto x = std::strtof(ptr, &ptr);
         auto y = std::strtof(ptr, &ptr);
         auto z = std::strtof(ptr, &ptr);
         queries.emplace_back(x, y, z);
 
-        auto x = std::strtof(ptr, &ptr);
-        auto y = std::strtof(ptr, &ptr);
-        auto z = std::strtof(ptr, &ptr);
-        results.emplace_back(x, y, z);
+        auto a = std::strtof(ptr, &ptr);
+        auto b = std::strtof(ptr, &ptr);
+        auto c = std::strtof(ptr, &ptr);
+        results.emplace_back(a, b, c);
     }
 
     return std::make_tuple(queries, results);
@@ -62,7 +64,7 @@ int main() {
     // Each line has 3 floats that are the query point, and 3 that are the result point
     // as determined by Maya's closest point algorithm
     std::string queryPath = "C:\\Users\\tyler\\src\\GitHub\\Libraries\\bvh\\test\\queries.txt";
-    auto [queries, ground_truth_results] = read_queries<Scalar>(queryPath);
+    auto [queries, ground_truth_results] = read_queries(queryPath);
 
     bvh::v2::ThreadPool thread_pool;
     bvh::v2::ParallelExecutor executor(thread_pool);
@@ -87,11 +89,10 @@ int main() {
     auto best_prim_idx = invalid_id;
     Vec3 best_point(0), best_bary(0);
 
-
-    auto leafFunc = [&](Scalar best_dist2, size_t begin, size_t end) {
+    auto leafFunc = [&](Vec3& p, Scalar best_dist2, size_t begin, size_t end) {
         for (Index i = begin; i < end; ++i) {
-            auto [prim_point, prim_bary] = closeest_point_tri(p, tris[i]);
-            auto prim_dist2 = length_squared(prim_point - p);
+            auto [prim_point, prim_bary] = bvh::v2::closest_point_tri(p, tris[i]);
+            auto prim_dist2 = bvh::v2::length_squared<Scalar, 3>(prim_point - p);
             if (prim_dist2 < best_dist2) {
 
                 best_prim_idx = i;
@@ -104,8 +105,10 @@ int main() {
         return best_dist2;
     };
 
+    static constexpr size_t stack_size = 64;
     for (size_t j = 0; j < queries.size(); ++j){
         auto& qp = queries[j];
+        bvh::v2::SmallStack<Bvh::Index, stack_size> stack;
         bvh.closest_point(qp, bvh.get_root().index, stack, leafFunc);
         //best_prim_idx
         //best_bary
