@@ -14,5 +14,9 @@ add_executable(benchmark benchmark.cpp load_obj.cpp)
 target_link_libraries(benchmark PUBLIC bvh)
 set_target_properties(benchmark PROPERTIES CXX_STANDARD 20)
 
+add_executable(cpom cpom_example.cpp load_obj.cpp)
+target_link_libraries(cpom PUBLIC bvh)
+set_target_properties(cpom PROPERTIES CXX_STANDARD 20)
+
 add_test(NAME simple_example COMMAND simple_example)
 add_test(NAME serialize COMMAND serialize)
