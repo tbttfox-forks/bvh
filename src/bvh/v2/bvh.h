@@ -114,8 +114,8 @@ restart:
 
             // Maybe move this to a closure?
             // That way all references to the query point are outside of this method
-            Scalar near_dist2 = length_squared(near_node.get_bbox().closest_point(p));
-            Scalar far_dist2 = length_squared(far_node.get_bbox().closest_point(p));
+            Scalar near_dist2 = length_squared(near_node.get_bbox().vec_to_closest(p));
+            Scalar far_dist2 = length_squared(far_node.get_bbox().vec_to_closest(p));
 
             auto near = near_node.index;
             auto far = far_node.index;
@@ -138,7 +138,7 @@ restart:
         // distance-to-triangle calculation is by far the slowest thing when profiling
         // so pruning more aggressively is definitely warranted
         auto& top_node = nodes[top_idx];
-        Scalar top_dist2 = length_squared(top_node.get_bbox().closest_point(p));
+        Scalar top_dist2 = length_squared(top_node.get_bbox().vec_to_closest(p));
         if (top_dist2 < best_dist2)
             best_dist2 = leaf_fn(p, top.first_id, top.first_id + top.prim_count);
     }
