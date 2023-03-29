@@ -2,6 +2,8 @@
 #define BVH_V2_BVH_H
 
 #include "bvh/v2/node.h"
+#include "bvh/v2/stack.h"
+#include "bvh/v2/utils.h"
 #include "bvh/v2/dist_point_triangle.h"
 
 #include <cstddef>
@@ -34,8 +36,8 @@ struct Bvh {
     /// Extracts the BVH rooted at the given node index.
     inline Bvh extract_bvh(size_t root_id) const;
 
-    template <typename NodeStack, typename IndexStack, typename LeafFn>
-    void closest_point(Vec<Scalar, Node::dimension>& p, Node, NodeStack&, IndexStack&, LeafFn&& leaf_fn) const;
+    template <typename NodeStack, typename LeafFn>
+    void closest_point(Vec<Scalar, Node::dimension>& p, Node, NodeStack&, LeafFn&& leaf_fn) const;
 
     /// Intersects the BVH with a single ray, using the given function to intersect the contents
     /// of a leaf. The algorithm starts at the node index `top` and uses the given stack object.
@@ -83,19 +85,18 @@ auto Bvh<Node>::extract_bvh(size_t root_id) const -> Bvh {
 }
 
 template <typename Node>
-template <typename NodeStack, typename IndexStack, typename LeafFn>
-void Bvh<Node>::closest_point(Vec<Scalar, Node::dimension>& p, Node start, NodeStack& node_stack, IndexStack& index_stack, LeafFn&& leaf_fn) const{
-
+template <typename NodeStack, typename LeafFn>
+void Bvh<Node>::closest_point(Vec<Scalar, Node::dimension>& p, Node start, NodeStack& node_stack, LeafFn&& leaf_fn) const{
     // Maybe turn this into an argument so I don't initialize it both here and
     // as a reference for the closure?
     // Maybe pass it by reference so it doesn't need to be returned from leaf_fn?
     Scalar best_dist2 = std::numeric_limits<Scalar>::max();
-
     node_stack.push(start.index);
 
-    // Nodes.get_root() grabs the 0 index of the node list
-    // TODO: Be smarter about how to get this stack ...
-    // Maybe I can build this using templating
+    // Nodes.get_root() grabs the 0 index of the node list... Need to be smarter about this
+    // Keep track of the index into the bvh::nodes array. That way we can access the bounding box
+    // TODO: add a switch that turns this behavior off
+    bvh::v2::SmallStack<UnsignedIntType<Node::index_bits>, NodeStack::capacity> index_stack;
     index_stack.push(0);
 
 restart:

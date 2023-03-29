@@ -80,7 +80,6 @@ int main() {
     config.quality = bvh::v2::DefaultBuilder<Node>::Quality::High;
     auto bvh = bvh::v2::DefaultBuilder<Node>::build(thread_pool, bboxes, centers, config);
 
-    // Permuting the primitive data allows to remove indirections during traversal, which makes it faster.
     static constexpr size_t invalid_id = std::numeric_limits<size_t>::max();
 
     auto best_prim_idx = invalid_id;
@@ -103,19 +102,16 @@ int main() {
         return best_dist2;
     };
 
-    // This allows for searching a tree of depth 64. That's 2^64 nodes
     static constexpr size_t stack_size = 64;
     size_t badCount = 0;
-
 
     for (size_t zz = 0; zz < 10000; ++zz){
         for (size_t j = 0; j < queries.size(); ++j){
             auto& qp = queries[j];
             bvh::v2::SmallStack<Bvh::Index, stack_size> nodeStack;
-            bvh::v2::SmallStack<size_t, stack_size> indexStack;  // TODO: Use the correct UnsignedInt<> template type here
 
             best_dist2 = std::numeric_limits<Scalar>::max();
-            bvh.closest_point(qp, bvh.get_root(), nodeStack, indexStack, leafFunc);
+            bvh.closest_point(qp, bvh.get_root(), nodeStack, leafFunc);
             //std::cout << "Closest TriIdx " << best_prim_idx << std::endl;
             //std::cout << "Closest Bary" << best_bary[0] << ", " << best_bary[1] << ", " << best_bary[2] << std::endl;
             //std::cout << "Closest Point" << best_point[0] << ", " << best_point[1] << ", " << best_point[2] << std::endl;
