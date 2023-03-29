@@ -135,7 +135,7 @@ restart:
             return best_dist2;
         };
         */
-        best_dist2 = leaf_fn(p, best_dist2, top.first_id, top.first_id + top.prim_count);
+        best_dist2 = leaf_fn(p, prim_ids, best_dist2, top.first_id, top.first_id + top.prim_count);
     }
 }
 
