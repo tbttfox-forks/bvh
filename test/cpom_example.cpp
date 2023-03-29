@@ -91,7 +91,8 @@ int main() {
 
     auto leafFunc = [&](Vec3& p, size_t begin, size_t end) {
         for (Index i = begin; i < end; ++i) {
-            auto [prim_point, prim_bary] = bvh::v2::closest_point_tri(p, tris[bvh.prim_ids[i]]);
+            auto& tri = tris[bvh.prim_ids[i]];
+            auto [prim_point, prim_bary] = bvh::v2::closest_point_tri(p, tri);
             auto prim_dist2 = bvh::v2::length_squared<Scalar, 3>(prim_point - p);
             if (prim_dist2 < best_dist2) {
 

@@ -96,13 +96,13 @@ void Bvh<Node>::closest_point(Vec<Scalar, Node::dimension>& p, Node start, Stack
     // Nodes.get_root() grabs the 0 index of the node list... Need to be smarter about this
     // Keep track of the index into the bvh::nodes array. That way we can access the bounding box
     // TODO: add a switch that turns this behavior off
-    bvh::v2::SmallStack<UnsignedIntType<Node::index_bits>, Stack::capacity> index_stack;
-    index_stack.push(0);
+    //bvh::v2::SmallStack<UnsignedIntType<Node::index_bits>, Stack::capacity> index_stack;
+    //index_stack.push(0);
 
 restart:
     while (!node_stack.is_empty()) {
         auto top = node_stack.pop();
-        auto top_idx = index_stack.pop();
+        //auto top_idx = index_stack.pop();
 
         // Start drilling down the hierarchy, picking the closer of the two children
         // each time as the "top", and putting the other on the stack
@@ -123,25 +123,27 @@ restart:
             if (far_dist2 < near_dist2) {
                 std::swap(near, far);
                 std::swap(near_dist2, far_dist2);
-                std::swap(near_idx, far_idx);
+                //std::swap(near_idx, far_idx);
             }
 
             // If the near node is farther than my best dist
             // then I can just prune that whole branch by restarting while loop
             if (near_dist2 > best_dist2) goto restart;
             top = near;
-            top_idx = near_idx;
+            //top_idx = near_idx;
             if (far_dist2 > best_dist2) continue;
             node_stack.push(far);
-            index_stack.push(far_idx);
+            //index_stack.push(far_idx);
         }
 
-        // distance-to-triangle calculation is by far the slowest thing when profiling
-        // so pruning more aggressively is definitely warranted
-        auto& top_node = nodes[top_idx];
-        Scalar top_dist2 = length_squared(top_node.get_bbox().vec_to_closest(p));
-        if (top_dist2 < best_dist2)
-            best_dist2 = leaf_fn(p, top.first_id, top.first_id + top.prim_count);
+        // distance-to-triangle calculation is THE hot-path so pruning more aggressively may be warranted
+        // It appears UN warranted at 2 tris per leaf with 1M triangles
+
+        //auto& top_node = nodes[top_idx];
+        //Scalar top_dist2 = length_squared(top_node.get_bbox().vec_to_closest(p));
+        //if (top_dist2 < best_dist2)
+
+        best_dist2 = leaf_fn(p, top.first_id, top.first_id + top.prim_count);
     }
 }
 
