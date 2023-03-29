@@ -85,10 +85,11 @@ int main() {
 
     auto best_prim_idx = invalid_id;
     Vec3 best_point(0), best_bary(0);
+    Scalar best_dist2 = std::numeric_limits<Scalar>::max();
 
-    auto leafFunc = [&](Vec3& p, const std::vector<size_t>& prim_ids, Scalar best_dist2, size_t begin, size_t end) {
+    auto leafFunc = [&](Vec3& p, size_t begin, size_t end) {
         for (Index i = begin; i < end; ++i) {
-            auto [prim_point, prim_bary] = bvh::v2::closest_point_tri(p, tris[prim_ids[i]]);
+            auto [prim_point, prim_bary] = bvh::v2::closest_point_tri(p, tris[bvh.prim_ids[i]]);
             auto prim_dist2 = bvh::v2::length_squared<Scalar, 3>(prim_point - p);
             if (prim_dist2 < best_dist2) {
 
@@ -104,29 +105,36 @@ int main() {
 
     // This allows for searching a tree of depth 64. That's 2^64 nodes
     static constexpr size_t stack_size = 64;
-    bool bad = false;
-    for (size_t j = 0; j < queries.size(); ++j){
-        auto& qp = queries[j];
-        bvh::v2::SmallStack<Bvh::Index, stack_size> stack;
-        bvh.closest_point(qp, bvh.get_root().index, stack, leafFunc);
-        //std::cout << "Closest TriIdx " << best_prim_idx << std::endl;
-        //std::cout << "Closest Bary" << best_bary[0] << ", " << best_bary[1] << ", " << best_bary[2] << std::endl;
-        //std::cout << "Closest Point" << best_point[0] << ", " << best_point[1] << ", " << best_point[2] << std::endl;
+    size_t badCount = 0;
 
-        // allclose(best_point, ground_truth_results[i])
-        auto &gt = ground_truth_results[j];
-        for (size_t c = 0; c < 3; ++c) {
-            if (!isclose(gt[c], best_point[c])) {
-                std::cout << "BAD!!!" << std::endl;
-                bad = true;
+
+    for (size_t zz = 0; zz < 10000; ++zz){
+        for (size_t j = 0; j < queries.size(); ++j){
+            auto& qp = queries[j];
+            bvh::v2::SmallStack<Bvh::Index, stack_size> nodeStack;
+            bvh::v2::SmallStack<size_t, stack_size> indexStack;  // TODO: Use the correct UnsignedInt<> template type here
+
+            best_dist2 = std::numeric_limits<Scalar>::max();
+            bvh.closest_point(qp, bvh.get_root(), nodeStack, indexStack, leafFunc);
+            //std::cout << "Closest TriIdx " << best_prim_idx << std::endl;
+            //std::cout << "Closest Bary" << best_bary[0] << ", " << best_bary[1] << ", " << best_bary[2] << std::endl;
+            //std::cout << "Closest Point" << best_point[0] << ", " << best_point[1] << ", " << best_point[2] << std::endl;
+
+            // allclose(best_point, ground_truth_results[i])
+            auto &gt = ground_truth_results[j];
+            for (size_t c = 0; c < 3; ++c) {
+                if (!isclose(gt[c], best_point[c])) {
+                    //std::cout << "BAD!!!" << std::endl;
+                    //std::cout << "Closest Point: " << best_point[0] << ", " << best_point[1] << ", " << best_point[2] << std::endl;
+                    //std::cout << "Ground Truth : " << gt[0] << ", " << gt[1] << ", " << gt[2] << std::endl;
+                    badCount++;
+                    break;
+                }
             }
         }
-        if (bad) {
-            std::cout << "Closest Point: " << best_point[0] << ", " << best_point[1] << ", " << best_point[2] << std::endl;
-            std::cout << "Ground Truth : " << gt[0] << ", " << gt[1] << ", " << gt[2] << std::endl;
-            bad = false;
-        }
     }
+
+    std::cout << "BadCount: " << badCount << std::endl;
 
     return 0;
 }

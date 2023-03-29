@@ -34,8 +34,8 @@ struct Bvh {
     /// Extracts the BVH rooted at the given node index.
     inline Bvh extract_bvh(size_t root_id) const;
 
-    template <typename Stack, typename LeafFn>
-    void closest_point(Vec<Scalar, Node::dimension>& p, Index, Stack&, LeafFn&& leaf_fn) const;
+    template <typename NodeStack, typename IndexStack, typename LeafFn>
+    void closest_point(Vec<Scalar, Node::dimension>& p, Node, NodeStack&, IndexStack&, LeafFn&& leaf_fn) const;
 
     /// Intersects the BVH with a single ray, using the given function to intersect the contents
     /// of a leaf. The algorithm starts at the node index `top` and uses the given stack object.
@@ -83,59 +83,64 @@ auto Bvh<Node>::extract_bvh(size_t root_id) const -> Bvh {
 }
 
 template <typename Node>
-template <typename Stack, typename LeafFn>
-void Bvh<Node>::closest_point(Vec<Scalar, Node::dimension>& p, Index start, Stack& stack, LeafFn&& leaf_fn) const{
+template <typename NodeStack, typename IndexStack, typename LeafFn>
+void Bvh<Node>::closest_point(Vec<Scalar, Node::dimension>& p, Node start, NodeStack& node_stack, IndexStack& index_stack, LeafFn&& leaf_fn) const{
 
+    // Maybe turn this into an argument so I don't initialize it both here and
+    // as a reference for the closure?
+    // Maybe pass it by reference so it doesn't need to be returned from leaf_fn?
     Scalar best_dist2 = std::numeric_limits<Scalar>::max();
-    stack.push(start);
+
+    node_stack.push(start.index);
+
+    // Nodes.get_root() grabs the 0 index of the node list
+    // TODO: Be smarter about how to get this stack ...
+    // Maybe I can build this using templating
+    index_stack.push(0);
 
 restart:
-    while (!stack.is_empty()) {
-        auto top = stack.pop();
+    while (!node_stack.is_empty()) {
+        auto top = node_stack.pop();
+        auto top_idx = index_stack.pop();
 
         // Start drilling down the hierarchy, picking the closer of the two children
         // each time as the "top", and putting the other on the stack
         while (top.prim_count == 0) {
-            auto& left  = nodes[top.first_id];
-            auto& right = nodes[top.first_id + 1];
+            auto near_idx = top.first_id;
+            auto far_idx = top.first_id + 1;
 
-            // TODO: I don't know the time/memory tradeoff for storing these values
-            // or computing them. Perhaps that's something I could template?
-            Scalar near_dist2 = length_squared(left.get_bbox().closest_point(p));
-            Scalar far_dist2 = length_squared(right.get_bbox().closest_point(p));
+            auto& near_node  = nodes[near_idx];
+            auto& far_node = nodes[far_idx];
 
-            auto near = left.index;
-            auto far = right.index;
+            // Maybe move this to a closure?
+            // That way all references to the query point are outside of this method
+            Scalar near_dist2 = length_squared(near_node.get_bbox().closest_point(p));
+            Scalar far_dist2 = length_squared(far_node.get_bbox().closest_point(p));
+
+            auto near = near_node.index;
+            auto far = far_node.index;
             if (far_dist2 < near_dist2) {
                 std::swap(near, far);
                 std::swap(near_dist2, far_dist2);
+                std::swap(near_idx, far_idx);
             }
 
             // If the near node is farther than my best dist
-            // then I can just skip everything, and restart the while loop
+            // then I can just prune that whole branch by restarting while loop
             if (near_dist2 > best_dist2) goto restart;
             top = near;
+            top_idx = near_idx;
             if (far_dist2 > best_dist2) continue;
-            stack.push(far);
+            node_stack.push(far);
+            index_stack.push(far_idx);
         }
 
-        /*
-        // Example leaf function
-        [&](Scalar best_dist2, size_t begin, size_t end) {
-            for (Index i = begin; i < end; ++i) {
-                auto [prim_point, prim_bary] = closeest_point_tri(p, tris[i]);
-                auto prim_dist2 = length_squared(prim_point - p);
-                if (prim_dist2 < best_dist2) {
-                    best_prim_idx = i;
-                    best_point = prim_point;
-                    best_bary = prim_bary;
-                    best_dist2 = prim_dist2;
-                }
-            }
-            return best_dist2;
-        };
-        */
-        best_dist2 = leaf_fn(p, prim_ids, best_dist2, top.first_id, top.first_id + top.prim_count);
+        // distance-to-triangle calculation is by far the slowest thing when profiling
+        // so pruning more aggressively is definitely warranted
+        auto& top_node = nodes[top_idx];
+        Scalar top_dist2 = length_squared(top_node.get_bbox().closest_point(p));
+        if (top_dist2 < best_dist2)
+            best_dist2 = leaf_fn(p, top.first_id, top.first_id + top.prim_count);
     }
 }
 
