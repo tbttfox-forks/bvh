@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include <tuple>
+#include <cmath>
 
 using Scalar  = double;
 using Index   = size_t;
@@ -69,10 +70,12 @@ int main() {
     // Get triangle centers and bounding boxes (required for BVH builder)
     std::vector<BBox> bboxes(tris.size());
     std::vector<Vec3> centers(tris.size());
+    std::vector<Vec3> normals(tris.size());
     executor.for_each(0, tris.size(), [&] (size_t begin, size_t end) {
         for (size_t i = begin; i < end; ++i) {
             bboxes[i]  = tris[i].get_bbox();
             centers[i] = tris[i].get_center();
+            normals[i] = tris[i].get_normal();
         }
     });
 
@@ -111,7 +114,7 @@ int main() {
             bvh::v2::SmallStack<Bvh::Index, stack_size> nodeStack;
 
             best_dist2 = std::numeric_limits<Scalar>::max();
-            bvh.closest_point(qp, bvh.get_root(), nodeStack, leafFunc);
+            bvh.closest_point(qp, bvh.get_root(), nodeStack, leafFunc, best_dist2);
             //std::cout << "Closest TriIdx " << best_prim_idx << std::endl;
             //std::cout << "Closest Bary" << best_bary[0] << ", " << best_bary[1] << ", " << best_bary[2] << std::endl;
             //std::cout << "Closest Point" << best_point[0] << ", " << best_point[1] << ", " << best_point[2] << std::endl;
